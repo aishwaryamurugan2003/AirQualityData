@@ -1,16 +1,59 @@
-# air_quality_app
+# Air Quality Monitoring App
 
-A new Flutter project.
+A simple Flutter app that displays real-time air quality data (PM2.5, PM10, CO, and NO2) for select Indian cities using the OpenAQ API.
 
-## Getting Started
+## Features
 
-This project is a starting point for a Flutter application.
+- Fetches latest air quality data for:
+  - Chennai
+  - Delhi
+  - Mumbai
+  - Kolkata
+- Displays PM2.5, PM10, CO, and NO2 concentrations.
+- City-wise sensor locations (like Alandur Bus Depot, Technological University, etc.).
+- Stylish and colorful card UI with city-specific data.
+- Auto-updates data when the app initializes.
 
-A few resources to get you started if this is your first Flutter project:
+## Dependencies
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- [`dio`](https://pub.dev/packages/dio): For API requests.
+- [`flutter/material.dart`](https://api.flutter.dev/flutter/material/material-library.html): Core Flutter UI framework.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Project Structure
+
+
+## How It Works
+
+1. The app initializes an `AirQualityController` which:
+   - Sets up Dio for network calls.
+   - Calls the OpenAQ `/locations/{id}/latest` endpoint for each city.
+   - Maps sensor IDs to parameters using `/sensors/{id}`.
+   - Updates UI with data using `ChangeNotifier`.
+
+2. The UI (`HomePage`) listens to the controller using `AnimatedBuilder` and builds custom cards for each city.
+
+3. Each card displays:
+   - City name and location.
+   - PM2.5, PM10, CO, NO2 values.
+   - Last updated status.
+
+## Sample API Flow
+
+- `GET /v3/locations/{locationId}/latest`: Gets the latest air quality readings for a city.
+- `GET /v3/sensors/{sensorId}`: Maps sensor to a parameter like PM2.5.
+
+## API Key
+
+You must have an OpenAQ API Key.
+
+Replace this value in `airquality_controller.dart`:
+
+```dart
+final String apiKey = 'YOUR_API_KEY_HERE';
+git clone https://github.com/yourusername/air_quality_app.git
+cd air_quality_app
+flutter pub get
+flutter run
+```
+## License
+This project is licensed under the MIT License.
