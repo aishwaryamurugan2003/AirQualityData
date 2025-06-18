@@ -12,6 +12,20 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   late final AirQualityController controller;
 
+  final List<Color> cardColors = [
+    Color(0xFFB2F2E6),
+    Color(0xFFFFCB27),
+    Color(0xFFF12726),
+    Color(0xFF81D4FA),
+  ];
+
+  final Map<String, String> cityMessages = {
+    'Chennai': 'Velachery Res CPCB',
+    'Delhi': 'Technological University',
+    'Mumbai': 'Colaba',
+    'Kolkata': 'Rabindra Bharati University',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -28,154 +42,109 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      body: Column(
-        children: [
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: const [
-                  Icon(Icons.map, color: Colors.black87),
-                  Text(
-                    "Air Quality",
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
+      body: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) {
+          return Column(
+            children: [
+              SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: const [
+                      Icon(Icons.map, color: Colors.black87),
+                      Text(
+                        "Air Quality",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      Icon(Icons.add, color: Colors.black87),
+                    ],
                   ),
-                  Icon(Icons.add, color: Colors.black87),
-                ],
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: StreamBuilder<List<AirQualityData>>(
-              stream: controller.airQualityStream,
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final dataList = snapshot.data!;
-
-                return ListView.builder(
-                  itemCount: dataList.length,
+              Expanded(
+                child: ListView.builder(
+                  itemCount: controller.cityData.length,
                   itemBuilder: (context, index) {
-                    return buildAirQualityCard(dataList[index]);
+                    final city = controller.cityData.keys.elementAt(index);
+                    final data = controller.cityData[city]!;
+                    final color = cardColors[index % cardColors.length];
+                    final message = cityMessages[city] ?? 'AQI Info';
+                    return buildAirQualityCard(city, data, color, message);
                   },
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget buildAirQualityCard(AirQualityData data) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 4,
-      child: Column(
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: data.backgroundColor,
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(16),
+                ),
               ),
-            ),
-            padding: const EdgeInsets.all(16),
-            width: double.infinity,
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: const [
-                    Icon(Icons.calendar_month, color: Colors.white),
-                    Icon(Icons.battery_full, color: Colors.white),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  data.city.toUpperCase(),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  "Air is ${data.status.toUpperCase()}",
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget buildAirQualityCard(String city, AirQualityModel data, Color cardColor, String message) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black12,
+            blurRadius: 6,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            city.toUpperCase(),
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
-          Container(
-            color: data.backgroundColor,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                buildMetric("AQI", data.aqi),
-                buildMetric("PM10", data.pm10),
-                buildMetric("PM2.5", data.pm25),
-                buildMetric("CO2", data.co2),
-              ],
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(
-              left: 16,
-              right: 16,
-              top: 12,
-              bottom: 12,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: const [
-                Text(
-                  "Updated just now",
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
-                Icon(Icons.more_vert, size: 18, color: Colors.grey),
-              ],
-            ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              buildMetric("PM2.5", data.pm25.toInt(), Colors.deepPurple),
+              buildMetric("PM10", data.pm10.toInt(), Colors.teal),
+              buildMetric("CO", data.co.toInt(), Colors.orange),
+              buildMetric("NO2", data.no2.toInt(), Colors.green),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: const [
+              Text("Updated just now", style: TextStyle(fontSize: 18, color: Colors.black54)),
+              Icon(Icons.more_vert, size: 20, color: Colors.black54),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget buildMetric(String label, int value) {
-    Color getColor(String label) {
-      switch (label) {
-        case "AQI":
-          return const Color.fromARGB(255, 37, 187, 42);
-        case "PM10":
-          return const Color.fromARGB(255, 65, 217, 202);
-        case "PM2.5":
-          return const Color.fromARGB(255, 171, 120, 44);
-        case "CO2":
-          return const Color.fromARGB(255, 197, 119, 95);
-        default:
-          return Colors.black;
-      }
-    }
-
-    final labelColor = getColor(label);
-
+  Widget buildMetric(String label, int value, Color color) {
     return Column(
       children: [
         Text(
@@ -183,14 +152,14 @@ class _HomePageState extends State<HomePage> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: labelColor,
+            color: color,
           ),
         ),
         Text(
           label,
           style: TextStyle(
             fontSize: 12,
-            color: labelColor,
+            color: color,
             fontWeight: FontWeight.w600,
           ),
         ),
