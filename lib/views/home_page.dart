@@ -134,9 +134,12 @@ class _HomePageState extends State<HomePage> {
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: const [
-              Text("Updated just now", style: TextStyle(fontSize: 18, color: Colors.black54)),
-              Icon(Icons.more_vert, size: 20, color: Colors.black54),
+            children: [
+              Text(
+                formatDateTime(data.latestDateTime),
+                style: const TextStyle(fontSize: 18, color: Colors.black54),
+              ),
+              const Icon(Icons.more_vert, size: 20, color: Colors.black54),
             ],
           ),
         ],
@@ -165,5 +168,22 @@ class _HomePageState extends State<HomePage> {
         ),
       ],
     );
+  }
+
+  String formatDateTime(String? dateTimeStr) {
+    if (dateTimeStr == null) return "No update time";
+    try {
+      final parsed = DateTime.parse(dateTimeStr);
+      final now = DateTime.now();
+      final diff = now.difference(parsed);
+
+      if (diff.inMinutes < 1) return 'just now';
+      if (diff.inMinutes < 60) return '${diff.inMinutes} min ago';
+      if (diff.inHours < 24) return '${diff.inHours} hrs ago';
+
+      return "${parsed.hour.toString().padLeft(2, '0')}:${parsed.minute.toString().padLeft(2, '0')}, ${parsed.day}/${parsed.month}/${parsed.year}";
+    } catch (e) {
+      return "Invalid date";
+    }
   }
 }

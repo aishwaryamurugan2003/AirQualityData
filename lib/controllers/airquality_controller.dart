@@ -47,7 +47,15 @@ class AirQualityController extends ChangeNotifier {
       final res = await dio.get('/v3/locations/$locId/latest');
       final List<dynamic> results = res.data['results'] ?? [];
 
+      String? latestDateTimeLocal;
+
       for (var result in results) {
+        if (latestDateTimeLocal == null &&
+            result['datetime'] != null &&
+            result['datetime']['local'] != null) {
+          latestDateTimeLocal = result['datetime']['local'];
+        }
+
         final int? sensorId = result['sensorsId'];
         final double? value = (result['value'] is num) ? result['value'].toDouble() : null;
 
@@ -60,11 +68,14 @@ class AirQualityController extends ChangeNotifier {
 
           if (parameter != null && parameters.contains(parameter)) {
             cityData[city]?.setParameter(parameter, value);
-            print(' $city -> $parameter: $value');
+            print('$city -> $parameter: $value');
           } else {
-            print(' Parameter "$parameter" not in allowed list or null');
+            print('Parameter "$parameter" not in allowed list or null');
           }
         }
+      }
+      if (latestDateTimeLocal != null) {
+        cityData[city]?.latestDateTime = latestDateTimeLocal;
       }
 
       print('Fetched latest data for $city');
