@@ -15,8 +15,8 @@ class _HomePageState extends State<HomePage> {
   final List<Color> cardColors = [
     Color(0xFFB2F2E6),
     Color(0xFFFFCB27),
-    Color(0xFFF12726),
-    Color(0xFF81D4FA),
+    Color(0xD067CD9F),
+    Color(0xFF81B5FA),
   ];
 
   final Map<String, String> cityMessages = {
@@ -69,13 +69,13 @@ class _HomePageState extends State<HomePage> {
               ),
               Expanded(
                 child: ListView.builder(
-                  itemCount: controller.cityData.length,
+                  itemCount: controller.stationLocationIds.length,
                   itemBuilder: (context, index) {
-                    final city = controller.cityData.keys.elementAt(index);
-                    final data = controller.cityData[city]!;
+                    final city = controller.stationLocationIds.keys.elementAt(index);
+                    final data = controller.stationLocationIds[city]!;
                     final color = cardColors[index % cardColors.length];
                     final message = cityMessages[city] ?? 'AQI Info';
-                    return buildAirQualityCard(city, data, color, message);
+                    return buildAirQualityCard(city, data as AirQualityModel, color, message);
                   },
                 ),
               ),
@@ -127,7 +127,7 @@ class _HomePageState extends State<HomePage> {
             children: [
               buildMetric("PM2.5", data.pm25.toInt(), Colors.deepPurple),
               buildMetric("PM10", data.pm10.toInt(), Colors.teal),
-              buildMetric("CO", data.co.toInt(), Colors.orange),
+              buildMetric("CO", data.co.toInt(), Colors.red),
               buildMetric("NO2", data.no2.toInt(), Colors.green),
             ],
           ),

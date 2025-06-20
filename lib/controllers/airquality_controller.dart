@@ -4,45 +4,68 @@ import 'package:flutter/material.dart';
 import '../models/air_quality_model.dart';
 
 class AirQualityController extends ChangeNotifier {
-  final Dio dio = Dio();
-  final String apiKey =
-      '2624dd4a650873d959d54a681af0a425a96c079d04aa1d0f1c9943dc8760387e';
+  static final AirQualityController _instance = AirQualityController._internal();
+  factory AirQualityController() => _instance;
 
-  final List<String> cities = ['Chennai', 'Delhi', 'Mumbai', 'Kolkata'];
-  final Map<String, int> cityLocationIds = {
-    'Chennai': 5655,
-    'Delhi': 13,
-    'Mumbai': 6927,
-    'Kolkata': 716,
-  };
+  AirQualityController._internal() {
+    _setupDio();
+    _initStations();
+    _fetchAllStations();
+  }
+
+  final Dio dio = Dio();
+  final String apiKey = '2624dd4a650873d959d54a681af0a425a96c079d04aa1d0f1c9943dc8760387e';
 
   final List<String> parameters = ['pm25', 'pm10', 'co', 'no2'];
+  final Map<String, int> stationLocationIds = {
 
-  Map<String, AirQualityModel> cityData = {};
-  Timer? _timer;
+    'Velachery': 5655,
+    'Alandur': 378,
+    'Arumbakkam': 11581,
 
-  AirQualityController() {
+    'University': 13,
+    'Anand vihar': 235,
+    'shadipur': 2503,
+
+    'Colaba': 2973,
+    'powai': 6956,
+    'Andheri': 2992,
+
+    'Salt Lake': 3032,
+    'victoria': 10633,
+    'Jadavpur': 6950,
+  };
+
+  final Map<String, AirQualityModel> stationData = {};
+  final Map<int, String> sensorParameterCache = {};
+  bool _initialized = false;
+
+  void _setupDio() {
     dio.options.baseUrl = 'https://api.openaq.org';
     dio.options.headers["x-api-key"] = apiKey;
     dio.options.preserveHeaderCase = true;
-
-    for (var city in cities) {
-      cityData[city] = AirQualityModel();
-    }
-
-    Future.microtask(() => _init());
   }
 
-  Future<void> _init() async {
-    for (var city in cities) {
-      final locId = cityLocationIds[city];
-      if (locId != null) {
-        await _fetchLatestWithSensor(city, locId);
-      }
+  void _initStations() {
+    for (var station in stationLocationIds.keys) {
+      stationData[station] = AirQualityModel();
     }
   }
 
-  Future<void> _fetchLatestWithSensor(String city, int locId) async {
+  Future<void> _fetchAllStations() async {
+    if (_initialized) return;
+    _initialized = true;
+
+    for (var entry in stationLocationIds.entries) {
+      final station = entry.key;
+      final locId = entry.value;
+
+      await Future.delayed(const Duration(milliseconds: 1500));
+      await _fetchDataForStation(station, locId);
+    }
+  }
+
+  Future<void> _fetchDataForStation(String station, int locId) async {
     try {
       final res = await dio.get('/v3/locations/$locId/latest');
       final List<dynamic> results = res.data['results'] ?? [];
@@ -57,53 +80,68 @@ class AirQualityController extends ChangeNotifier {
         }
 
         final int? sensorId = result['sensorsId'];
-        final double? value = (result['value'] is num) ? result['value'].toDouble() : null;
+        final double? value =
+        (result['value'] is num) ? result['value'].toDouble() : null;
 
-        print('City: $city | Sensor ID: $sensorId | Raw Value: $value');
+        String? parameter = result['parameter'];
+        parameter ??= await _getParameterFromSensor(sensorId);
 
-        if (sensorId != null && value != null) {
-          final String? parameter = await _getParameterFromSensor(sensorId);
-
-          print('Mapped Parameter: $parameter');
-
-          if (parameter != null && parameters.contains(parameter)) {
-            cityData[city]?.setParameter(parameter, value);
-            print('$city -> $parameter: $value');
-          } else {
-            print('Parameter "$parameter" not in allowed list or null');
+        if (sensorId != null && value != null && parameter != null) {
+          if (parameters.contains(parameter)) {
+            stationData[station]?.setParameter(parameter, value);
+            debugPrint('$station -> $parameter: $value');
           }
         }
       }
+
       if (latestDateTimeLocal != null) {
-        cityData[city]?.latestDateTime = latestDateTimeLocal;
+        stationData[station]?. latestDateTime = latestDateTimeLocal;
       }
 
-      print('Fetched latest data for $city');
       notifyListeners();
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 429) {
+        debugPrint('Rate limit hit for $station (429). Retrying after delay...');
+        await Future.delayed(Duration(seconds: 5));
+        await _fetchDataForStation(station, locId);
+      } else {
+        debugPrint('Dio error fetching $station: ${e.message}');
+      }
     } catch (e) {
-      print('Error fetching data for $city: $e');
+      debugPrint('General error fetching $station: $e');
     }
   }
 
-  Future<String?> _getParameterFromSensor(int sensorId) async {
+  Future<String?> _getParameterFromSensor(int? sensorId) async {
+    if (sensorId == null) return null;
+
+    if (sensorParameterCache.containsKey(sensorId)) {
+      return sensorParameterCache[sensorId];
+    }
+
     try {
       final res = await dio.get('/v3/sensors/$sensorId');
       final List<dynamic> results = res.data['results'] ?? [];
       if (results.isNotEmpty) {
         final param = results[0]['parameter'];
-        return param != null ? param['name'] : null;
+        final name = param != null ? param['name'] : null;
+        if (name != null) {
+          sensorParameterCache[sensorId] = name;
+        }
+        return name;
       }
     } catch (e) {
-      print('Error fetching parameter for sensor $sensorId: $e');
+      debugPrint('Error fetching parameter for sensor $sensorId: $e');
     }
     return null;
   }
 
-  AirQualityModel getDataForCity(String city) => cityData[city]!;
+  AirQualityModel getDataForStation(String station) {
+    return stationData[station] ?? AirQualityModel();
+  }
 
   @override
   void dispose() {
-    _timer?.cancel();
     super.dispose();
   }
 }
