@@ -68,23 +68,21 @@ class AirQualityController extends ChangeNotifier {
   Future<void> _fetchDataForStation(String station, int locId) async {
     try {
       final res = await dio.get('/v3/locations/$locId/latest');
-      final List<dynamic> results = res.data['results'] ?? [];
+      final List<dynamic> jsonList = res.data['results'] ?? [];
 
       String? latestDateTimeLocal;
 
-      for (var result in results) {
-        if (latestDateTimeLocal == null &&
-            result['datetime'] != null &&
-            result['datetime']['local'] != null) {
-          latestDateTimeLocal = result['datetime']['local'];
-        }
+      for (var json in jsonList) {
+        // You can define AirQualityModel.fromJson(json) to return proper model
+        final int? sensorId = json['sensorsId'];
+        final double? value = (json['value'] is num) ? json['value'].toDouble() : null;
 
-        final int? sensorId = result['sensorsId'];
-        final double? value =
-        (result['value'] is num) ? result['value'].toDouble() : null;
-
-        String? parameter = result['parameter'];
+        String? parameter = json['parameter'];
         parameter ??= await _getParameterFromSensor(sensorId);
+
+        if (json['datetime'] != null && json['datetime']['local'] != null && latestDateTimeLocal == null) {
+          latestDateTimeLocal = json['datetime']['local'];
+        }
 
         if (sensorId != null && value != null && parameter != null) {
           if (parameters.contains(parameter)) {
@@ -95,7 +93,7 @@ class AirQualityController extends ChangeNotifier {
       }
 
       if (latestDateTimeLocal != null) {
-        stationData[station]?. latestDateTime = latestDateTimeLocal;
+        stationData[station]?.latestDateTime = latestDateTimeLocal;
       }
 
       notifyListeners();
@@ -111,6 +109,7 @@ class AirQualityController extends ChangeNotifier {
       debugPrint('General error fetching $station: $e');
     }
   }
+
 
   Future<String?> _getParameterFromSensor(int? sensorId) async {
     if (sensorId == null) return null;
